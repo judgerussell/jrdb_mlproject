@@ -2,8 +2,11 @@
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from sklearn.preprocessing import StandardScaler, QuantileTransformer
 from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # read in the data
@@ -12,10 +15,35 @@ X = pd.read_csv('lish-moa/train_features.csv')
 Y = np.array(pd.read_csv('lish-moa/train_targets_scored.csv'))
 train_drug = np.array(pd.read_csv('lish-moa/train_drug.csv'))
 test_X = (pd.read_csv('lish-moa/test_features.csv'))
+non_scored = np.array(pd.read_csv('lish-moa/train_targets_nonscored.csv'))
+
+# DATA PREPROCESSING
+# %%
+# kmeans clustering on non-scored targets, add cluster value in as a feature
+"""
+# this was for testing different values of k
+non_scored = non_scored[:,1:]
+silhouette = []
+kmax = 250
+
+for k in range(245, kmax):
+   kmeans = KMeans(n_clusters=k)
+   kmeans.fit(non_scored)
+   labels = kmeans.labels_
+   silhouette.append(silhouette_score(non_scored, labels, metric='euclidean'))
+
+print(silhouette)
+plt.axes().set_xlim([245, kmax])
+plt.plot(range(245,kmax), silhouette)
+plt.show()
+"""
+non_scored = non_scored[:,1:]
+kmeans = KMeans(n_clusters=160)
+kmeans.fit(non_scored)
+cluster_labels = np.reshape(np.array(kmeans.labels_), (1, len(kmeans.labels_)))
+
 
 # %%
-# DATA PREPROCESSING
-
 # replacing categorical values with real values
 
 replace_dict = {"cp_type": {"trt_cp": 0, "ctl_vehicle": 1},
@@ -31,7 +59,7 @@ test_X.replace(replace_dict, inplace=True)
 test_X = np.array(test_X)
 test_X = test_X[:, 1:]
 
-cat = X[:, :3]
+cat = np.concatenate(X[:, :3], cluster_labels.T)
 real = X[:, 3:]
 test_cat = X[:, :3]
 test_real = X[:, 3:]
@@ -39,11 +67,14 @@ test_real = X[:, 3:]
 
 
 
+
+# %%
 # scaling
 
 
 scaler = StandardScaler()
 quan = QuantileTransformer(n_quantiles=100,random_state=0, output_distribution="normal")
+
 
 quan.fit(real)
 scaler.fit(real)
@@ -85,6 +116,10 @@ for i in range(len(cell_PCA.explained_variance_ratio_)):
 
 n_cell_components = i
 
+
+print(n_gene_components)
+print(n_cell_components)
+
 ## redoing PCA with optimal number of components
 gene_PCA = PCA(n_components=518)
 cell_PCA = PCA(n_components=40)
@@ -92,8 +127,6 @@ cell_PCA = PCA(n_components=40)
 pca_genes = gene_PCA.fit_transform(np.concatenate( (gene, test_gene), 1))
 pca_cells = cell_PCA.fit_transform(np.concatenate((cell, test_cell), 1))
 
-print(n_gene_components)
-print(n_cell_components)
 
 
 # %%
