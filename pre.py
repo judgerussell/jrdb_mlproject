@@ -1,9 +1,9 @@
 # %%
-from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from sklearn.preprocessing import StandardScaler, QuantileTransformer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+from sklearn.feature_selection import VarianceThreshold
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,10 +14,32 @@ import matplotlib.pyplot as plt
 X = pd.read_csv('lish-moa/train_features.csv')
 Y = np.array(pd.read_csv('lish-moa/train_targets_scored.csv'))
 train_drug = np.array(pd.read_csv('lish-moa/train_drug.csv'))
-test_X = (pd.read_csv('lish-moa/test_features.csv'))
+test_X = pd.read_csv('lish-moa/test_features.csv')
 non_scored = np.array(pd.read_csv('lish-moa/train_targets_nonscored.csv'))
 
 # DATA PREPROCESSING
+# %%
+# replacing categorical values with real values
+
+replace_dict = {"cp_type": {"trt_cp": 0, "ctl_vehicle": 1},
+                  "cp_time": {24: 0, 48: 1, 72: 2},
+                  "cp_dose": {"D1": 0, "D2": 1}
+               }
+
+X.replace(replace_dict, inplace=True)
+X = np.array(X)
+X = X[:, 1:]
+
+test_X.replace(replace_dict, inplace=True)
+test_X = np.array(test_X)
+test_X = test_X[:, 1:]
+
+non_scored = non_scored[:,1:]
+
+Y = Y[:, 1:]
+
+train_drug = train_drug[:, 1:]
+
 # %%
 # kmeans clustering on non-scored targets, add cluster value in as a feature
 """
@@ -37,35 +59,25 @@ plt.axes().set_xlim([245, kmax])
 plt.plot(range(245,kmax), silhouette)
 plt.show()
 """
-non_scored = non_scored[:,1:]
 kmeans = KMeans(n_clusters=160)
 kmeans.fit(non_scored)
 cluster_labels = np.reshape(np.array(kmeans.labels_), (1, len(kmeans.labels_)))
 
-
-# %%
-# replacing categorical values with real values
-
-replace_dict = {"cp_type": {"trt_cp": 0, "ctl_vehicle": 1},
-                  "cp_time": {24: 0, 48: 1, 72: 2},
-                  "cp_dose": {"D1": 0, "D2": 1}
-               }
-
-X.replace(replace_dict, inplace=True)
-X = np.array(X)
-X = X[:, 1:]
-
-test_X.replace(replace_dict, inplace=True)
-test_X = np.array(test_X)
-test_X = test_X[:, 1:]
-
-cat = np.concatenate(X[:, :3], cluster_labels.T)
+cat = np.concatenate((X[:, :3], cluster_labels.T), 1)
 real = X[:, 3:]
 test_cat = X[:, :3]
 test_real = X[:, 3:]
 
 
 
+# %%
+# feature selection: variance threshold
+
+v = VarianceThreshold(threshold=0.1)
+real = v.fit_transform(real)
+
+v = VarianceThreshold(threshold=0.1)
+test_real = v.fit_transform(test_real)
 
 
 # %%
@@ -95,8 +107,8 @@ test_cell = test_real[:, 772:]
 gene_PCA = PCA()
 cell_PCA = PCA()
 
-gene_PCA.fit(np.concatenate((gene, test_gene), 1))
-cell_PCA.fit(np.concatenate((cell, test_cell), 1))
+gene_PCA.fit(np.concatenate((gene, test_gene), 0))
+cell_PCA.fit(np.concatenate((cell, test_cell), 0))
 
 percent = 0
 # finding number of principal components
@@ -120,28 +132,22 @@ n_cell_components = i
 print(n_gene_components)
 print(n_cell_components)
 
-## redoing PCA with optimal number of components
-gene_PCA = PCA(n_components=518)
-cell_PCA = PCA(n_components=40)
+# redoing PCA with optimal number of components
+gene_PCA = PCA(n_components=555)
+cell_PCA = PCA(n_components=80)
 
-pca_genes = gene_PCA.fit_transform(np.concatenate( (gene, test_gene), 1))
-pca_cells = cell_PCA.fit_transform(np.concatenate((cell, test_cell), 1))
+pca_genes = gene_PCA.fit_transform(np.concatenate( (gene, test_gene), 0))
+pca_cells = cell_PCA.fit_transform(np.concatenate((cell, test_cell), 0))
 
-
+train_X = np.concatenate((cat, pca_genes[:len(X)], pca_cells[:len(X)]), 1)
+test_X = np.concatenate((test_cat, pca_genes[len(X):], pca_cells[len(X):]), 1)
 
 # %%
-# STRATIFIED K FOLD
-# add drug id as a feature to stratify in the cross validation
-target = np.concatenate((train_drug[:, 1:], Y[:, 1:]), 1)
+# writing to file
 
-# multilabel stratified kfold
-mskf = MultilabelStratifiedKFold(n_splits=10, shuffle=True, random_state=0)
-
-for train_index, test_index in mskf.split(X, target):
-   print("TRAIN:", train_index, "TEST:", test_index)
-   X_train, X_test = X[train_index], X[test_index]
-   Y_train, Y_test = Y[train_index], Y[test_index]
-
-
+np.save("preprocessed/x.npy", train_X)
+np.save("preprocessed/y.npy", Y)
+np.save("preprocessed/test_X.npy", test_X)
+np.save("preprocessed/train_drug.npy", train_drug)
 
 # %%
