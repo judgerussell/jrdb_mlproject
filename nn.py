@@ -17,7 +17,16 @@ def log_loss_metric(y_true, y_pred):
 def train(model, device, train_loader, opt, epoch):
     model.train()
 
-    for
+    for index, (data, target) in enumerate(train_loader):
+        opt.zero_grad()
+        output = model(data.to(device))
+        loss = F.log_loss_metric(output, target.to(device))
+        loss.backward()
+        opt.step()
+        if index % 100 == 0: #Print loss every 100 batch
+            print('Train Epoch: {}\tLoss: {:.6f}'.format(
+                epoch, loss.item()))
+    return loss 
 
 def NNstratCV(model, nfolds, train_X, train_Y, output_name, **params):
     device = torch.device('cpu')
@@ -36,8 +45,19 @@ def NNstratCV(model, nfolds, train_X, train_Y, output_name, **params):
         Y_valid_tensor = torch.tensor(Y_valid, device)
 
         # create data loader
-        #train_data = utils.TensorDataset()
-    
+        trainload = utils.DataLoader(utils.TensorDataset(X_train_tensor, Y_train_tensor), batch = )
+        testload = utils.DataLoader(utils.TensorDataset(X_valid_tensor, Y_valid_tensor), batch = )
+
+        model = NN1().to(device)
+        opt = optim.Adam(model.parameters(), lr=0.1)
+
+   
+        
+        for epoch in range(10):
+            train_acc = train(model, device, train_loader, opt, epoch)
+            print('\nTrain set Accuracy: {:.1f}%\n'.format(train_acc))
+            
+        # torch.save(model.state_dict(), "nn.pt")
     # Save to file in the current working directory
     joblib_file = "joblib_model_{}.pkl".format(output_name)
     joblib.dump((model, scores), joblib_file)
