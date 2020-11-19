@@ -133,8 +133,8 @@ print(n_gene_components)
 print(n_cell_components)
 
 # redoing PCA with optimal number of components
-gene_PCA = PCA(n_components=555)
-cell_PCA = PCA(n_components=80)
+gene_PCA = PCA(n_components=80)
+cell_PCA = PCA(n_components=20)
 
 pca_genes = gene_PCA.fit_transform(np.concatenate( (gene, test_gene), 0))
 pca_cells = cell_PCA.fit_transform(np.concatenate((cell, test_cell), 0))
@@ -145,9 +145,9 @@ test_X = np.concatenate((test_cat, pca_genes[len(X):], pca_cells[len(X):]), 1)
 # %%
 # writing to file
 
-np.save("preprocessed/x.npy", train_X)
-np.save("preprocessed/y.npy", Y)
-np.save("preprocessed/test_X.npy", test_X)
-np.save("preprocessed/train_drug.npy", train_drug)
+np.save("preprocessed_boost/x.npy", train_X)
+np.save("preprocessed_boost/y.npy", Y)
+np.save("preprocessed_boost/test_X.npy", test_X)
+np.save("preprocessed_boost/train_drug.npy", train_drug)
 
 # %%
