@@ -46,23 +46,25 @@ train_drug = np.load("preprocessed_boost/train_drug.npy", allow_pickle=True)
 
 # %%
 # creating k stratified folds for CV
-train_X, test_X, train_Y, test_Y = train_test_split(X, Y, test_size=.25, shuffle=True)
+train_X, valid_X, train_Y, valid_Y = train_test_split(X, Y, test_size=.25, shuffle=True)
 
 n_folds = 6
 # %%
 # random forest
 params = {"n_estimators": 200, "max_depth": 30}
-stratCV(RandomForestClassifier, n_folds, train_X, train_Y, 'random_forest', **params)
+#stratCV(RandomForestClassifier, n_folds, train_X, train_Y, 'random_forest', **params)
 # %% 
 # hist gradient boost
-N = 100
-losses = {}
-for n in range(25, N, 5): 
-    params = {"learning_rate": .1, "max_depth": n, "early_stopping": True, "l2_regularization": True}    
-    cv_loss = stratCV(HistGradientBoostingRegressor, n_folds, train_X, train_Y, 'hist_gradient' + str(n), **params)
-    losses[n] = np.sum(cv_loss) / n_folds
+params = {"learning_rate": .1, "max_depth": 25, "early_stopping": True, "l2_regularization": True}    
 
-print(losses)
+hist = MultiOutputRegressor(HistGradientBoostingRegressor(**params))
+hist.fit(train_X, train_Y)
+y_preds = hist.predict(valid_X)
+ctrl_i = np.where(valid_X[:, 0] == 1)
+y_preds[ctrl_i] = 0
+print(log_loss_metric(valid_Y, y_preds))
+joblib_file = "joblib_model_hist.pkl"
+joblib.dump((hist, y_preds), joblib_file)
 
 # %%
 

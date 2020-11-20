@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # read in the data
 
 X = pd.read_csv('lish-moa/train_features.csv')
-Y = np.array(pd.read_csv('lish-moa/train_targets_scored.csv'))
+Y = (pd.read_csv('lish-moa/train_targets_scored.csv'))
 train_drug = np.array(pd.read_csv('lish-moa/train_drug.csv'))
 test_X = pd.read_csv('lish-moa/test_features.csv')
 non_scored = np.array(pd.read_csv('lish-moa/train_targets_nonscored.csv'))
@@ -31,14 +31,26 @@ X = np.array(X)
 X = X[:, 1:]
 
 test_X.replace(replace_dict, inplace=True)
+
+
+test_samples = test_X.index.values
+targets = Y.columns.values[1:]
+
 test_X = np.array(test_X)
+test_samples = test_X[:, 0]
 test_X = test_X[:, 1:]
 
 non_scored = non_scored[:,1:]
-
+Y = np.array(Y)
 Y = Y[:, 1:]
 
+
 train_drug = train_drug[:, 1:]
+
+X = X.astype(np.double)
+Y = Y.astype(np.double)
+test_X = test_X.astype(np.double)
+non_scored = non_scored.astype(np.double)
 
 # %%
 # kmeans clustering on non-scored targets, add cluster value in as a feature
@@ -59,14 +71,15 @@ plt.axes().set_xlim([245, kmax])
 plt.plot(range(245,kmax), silhouette)
 plt.show()
 """
-kmeans = KMeans(n_clusters=160)
-kmeans.fit(non_scored)
-cluster_labels = np.reshape(np.array(kmeans.labels_), (1, len(kmeans.labels_)))
+#kmeans = KMeans(n_clusters=160)
+#kmeans.fit(non_scored)
+#cluster_labels = np.reshape(np.array(kmeans.labels_), (1, len(kmeans.labels_)))
 
-cat = np.concatenate((X[:, :3], cluster_labels.T), 1)
+#cat = np.concatenate((X[:, :3], cluster_labels.T), 1)
+cat = X[:, :3]
 real = X[:, 3:]
-test_cat = X[:, :3]
-test_real = X[:, 3:]
+test_cat = test_X[:, :3]
+test_real = test_X[:, 3:]
 
 
 
@@ -133,8 +146,8 @@ print(n_gene_components)
 print(n_cell_components)
 
 # redoing PCA with optimal number of components
-gene_PCA = PCA(n_components=80)
-cell_PCA = PCA(n_components=20)
+gene_PCA = PCA(n_components=555)
+cell_PCA = PCA(n_components=40)
 
 pca_genes = gene_PCA.fit_transform(np.concatenate( (gene, test_gene), 0))
 pca_cells = cell_PCA.fit_transform(np.concatenate((cell, test_cell), 0))
@@ -145,9 +158,12 @@ test_X = np.concatenate((test_cat, pca_genes[len(X):], pca_cells[len(X):]), 1)
 # %%
 # writing to file
 
-np.save("preprocessed_boost/x.npy", train_X)
-np.save("preprocessed_boost/y.npy", Y)
-np.save("preprocessed_boost/test_X.npy", test_X)
-np.save("preprocessed_boost/train_drug.npy", train_drug)
+print(test_X.shape)
+np.save("preprocessed/x.npy", train_X)
+np.save("preprocessed/y.npy", Y)
+np.save("preprocessed/test_X.npy", test_X)
+np.save("preprocessed/train_drug.npy", train_drug)
+np.save("targets.npy", targets)
+np.save("test_samples.npy", test_samples)
 
 # %%
