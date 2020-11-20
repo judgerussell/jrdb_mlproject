@@ -147,7 +147,7 @@ print(n_cell_components)
 
 # redoing PCA with optimal number of components
 gene_PCA = PCA(n_components=555)
-cell_PCA = PCA(n_components=40)
+cell_PCA = PCA(n_components=60)
 
 pca_genes = gene_PCA.fit_transform(np.concatenate( (gene, test_gene), 0))
 pca_cells = cell_PCA.fit_transform(np.concatenate((cell, test_cell), 0))

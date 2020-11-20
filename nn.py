@@ -102,6 +102,7 @@ class NN2(nn.Module):
         self.dropout1 = nn.Dropout(p=0.4)
         self.relu1 = nn.ReLU()
         self.linear1 = nn.Linear(num_features, hidden_sizes[0])
+        
         self.batchnorm2 = nn.BatchNorm1d(hidden_sizes[0])
         self.dropout2 = nn.Dropout(p=0.25)
         self.prelu = nn.PReLU()
@@ -111,6 +112,7 @@ class NN2(nn.Module):
         self.dropout3 = nn.Dropout(p=0.2)
         self.prelu2 = nn.PReLU()
         self.linear3 = nn.utils.weight_norm(nn.Linear(hidden_sizes[1], num_targets))
+        #self.soft = nn.Softmax()
         
 
     def forward(self, x):
@@ -125,7 +127,7 @@ class NN2(nn.Module):
         drop3 = self.dropout3(lin2)
         prelu2 = self.prelu2(drop3)
         output = self.linear3(prelu2)
-
+        #softmax = self.soft(lin3)
         return output
 
 # %%
@@ -139,28 +141,33 @@ train_drug = np.load("preprocessed/train_drug.npy", allow_pickle=True)
 print(Y.shape)
 train_X, valid_X, train_Y, valid_Y = train_test_split(X, Y, test_size=.25, shuffle=True)
 
-ctrl_index = np.where(X[:, 0] == 1)
 print(ctrl_index)
-
-#NNstratCV(NN1, 5, train_X, train_Y, 'neuralnet1', params={'num_features': 598, 'num_targets': 206, 'hidden_sizes': [1024]})
-#NNstratCV(NN2, 5, train_X, train_Y, 'neuralnet2', params={'num_features': 598, 'num_targets': 206, 'hidden_sizes': [1024, 512]})
 # %%
 # train on full data
 
-nnmodel = NN2(598, 206, [1024, 512])
+device = torch.device('cpu')
+nnmodel = NN2(618, 206, [1024, 512])
 nnmodel.to(device)
 nnmodel.double()
 opt = optim.Adam(nnmodel.parameters(), lr=0.1)
-device = torch.device('cpu')
 X_train_tensor = torch.tensor(train_X, device=device)
 Y_train_tensor = torch.tensor(train_Y, device=device)
 trainload = utils.DataLoader(utils.TensorDataset(X_train_tensor, Y_train_tensor), batch_size=32)
 for epoch in range(10):
     train_acc = train(nnmodel, device, trainload, opt, epoch)
 
-# %%
-X_valid_tensor = torch.tensor(X_valid, device=device)
 
-pred = nnmodel()
-nn.BCEWithLogitsLoss()(pred, valid_X)
+joblib_file = "joblib_model_nn2.pkl"
+joblib.dump(nnmodel, joblib_file)
+# %%
+X_valid_tensor = torch.tensor(valid_X, device=device)
+Y_valid_tensor = torch.tensor(valid_Y, device=device)
+pred = nnmodel(X_valid_tensor.to(device))
+
+
+ctrl_index = np.where(valid_X[:, 0] == 1)
+print(pred)
+print(Y_valid_tensor)
+#pred[ctrl_index] = 0
+nn.BCEWithLogitsLoss()(pred, Y_valid_tensor.to(device))
 # %%

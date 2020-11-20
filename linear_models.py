@@ -65,7 +65,7 @@ mskf = MultilabelStratifiedKFold(n_splits=10, shuffle=True)
 # %%
 # Ridge Regression
 params = {"alpha": 1}
-stratCV(Ridge, 5, train_X, train_Y, 'ridgetest', **params)
+#stratCV(Ridge, 5, train_X, train_Y, 'ridgetest', **params)
 
 ctrl_i = np.where(test_X[:, 0] == 1)
 r = MultiOutputRegressor(Ridge())

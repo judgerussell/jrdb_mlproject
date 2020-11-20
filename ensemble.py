@@ -3,7 +3,7 @@
 
 from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 from sklearn.experimental import enable_hist_gradient_boosting
-from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestClassifier
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import log_loss
@@ -51,17 +51,21 @@ train_X, valid_X, train_Y, valid_Y = train_test_split(X, Y, test_size=.25, shuff
 n_folds = 6
 # %%
 # random forest
-params = {"n_estimators": 200, "max_depth": 30}
-#stratCV(RandomForestClassifier, n_folds, train_X, train_Y, 'random_forest', **params)
+params = {"n_estimators": 100, "max_depth": 5}
+#stratCV(RandomForestRegressor, n_folds, train_X, train_Y, 'random_forest', **params)
+randomforest = MultiOutputRegressor(RandomForestRegressor(**params))
+randomforest.fit(train_X, train_Y)
+y_preds = randomforest.predict(valid_X)
+print(log_loss_metric(valid_Y, y_preds))
+joblib_file = "joblib_model_randomforest.pkl"
+joblib.dump((randomforest, y_preds), joblib_file)
 # %% 
 # hist gradient boost
-params = {"learning_rate": .1, "max_depth": 25, "early_stopping": True, "l2_regularization": True}    
+params = {"learning_rate": .01, "max_depth": 5, "early_stopping": True, "l2_regularization": .3}    
 
 hist = MultiOutputRegressor(HistGradientBoostingRegressor(**params))
 hist.fit(train_X, train_Y)
 y_preds = hist.predict(valid_X)
-ctrl_i = np.where(valid_X[:, 0] == 1)
-y_preds[ctrl_i] = 0
 print(log_loss_metric(valid_Y, y_preds))
 joblib_file = "joblib_model_hist.pkl"
 joblib.dump((hist, y_preds), joblib_file)
